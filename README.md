@@ -1,6 +1,6 @@
-# MTool 2.0 Update to U8g2,fix repeater and support NodeMCU ESP8266 with OLED 0,96
+# MTool 2.0 Update to U8g2,fix repeater and support NodeMCU ESP8266 with OLED 0,96.Add came,nice,an-motor bruteforce.
 
-RCSwitch.cpp in rc-switch library add line  
+RCSwitch.cpp in rc-switch library for receiver add line  
 ```
 { 700, { 36,  1 }, {  1,  2 }, {  2,  1 }, true },   // protocol 13 (Nice) Holtek HT-12E
 { 323, { 45, 2 }, { 1, 2 }, { 2, 1 }, true }, 	    // protocol 14 (Came)
