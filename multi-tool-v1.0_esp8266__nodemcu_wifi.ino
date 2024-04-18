@@ -6,15 +6,11 @@ https://github.com/olikraus/U8g2_Arduino
 
 https://github.com/neu-rah/ArduinoMenu/releases
 
-https://github.com/FastLED/FastLED/releases
-
 https://github.com/sui77/rc-switch
 
 https://github.com/neu-rah/streamFlow
 
 https://github.com/geneReeves/ArduinoStreaming
-
-  
 
 ********************************************************************/
 #include <Arduino.h>
@@ -31,13 +27,13 @@ https://github.com/geneReeves/ArduinoStreaming
 
 #define USE_SSD1306
 #define fontX 7
-#define fontY 16
+#define fontY 14
 #define offsetX 0
 #define offsetY 3
 #define U8_Width 128
 #define U8_Height 64
 #define USE_HWI2C
-U8G2_SSD1306_128X64_NONAME_F_SW_I2C u8g2(U8G2_R0, 12, 14, U8X8_PIN_NONE);
+
 
 #include <ESP8266WiFi.h>
 #include <DNSServer.h> 
@@ -116,8 +112,8 @@ result jammerswOff() {
 // Sniff on/off
 
 result sniffOn() {
-  mySwitch.resetAvailable();
-  sniffSW = 1 ;
+  digitalWrite(rxOn, HIGH);
+  sniffSW = 1;
   value = mySwitch.getReceivedValue();
   bitlength = mySwitch.getReceivedBitlength();
   protocol = mySwitch.getReceivedProtocol();
@@ -126,7 +122,8 @@ result sniffOn() {
 }
 
 result sniffOff() {
-  sniffSW = 0 ;
+  sniffSW = 0;
+  digitalWrite(rxOn, LOW);
   return proceed;
 }
 
@@ -151,8 +148,8 @@ result btfswOff() {
 
 result wifiswOn() {
   
-   bootTime = lastActivity = millis();
-   WiFi.mode(WIFI_AP);
+  bootTime = lastActivity = millis();
+  WiFi.mode(WIFI_AP);
   WiFi.softAPConfig(APIP, APIP, IPAddress(255, 255, 255, 0));
   WiFi.softAP(SSID_NAME);
   dnsServer.start(DNS_PORT, "*", APIP);
@@ -202,10 +199,10 @@ wifiname.trim();
   server1.setDns(WiFi.dnsIP(1));
 
   WiFi.softAPConfig( // Set IP Address, Gateway and Subnet
-  IPAddress(192, 168, 100, 1),
-  IPAddress(192, 168, 100, 1),
+  IPAddress(172, 217, 28, 254),
+  IPAddress(172, 217, 28, 254),
   IPAddress(255, 255, 255, 0));
-  WiFi.softAP("ext", "password1234");
+  WiFi.softAP(repeatSSID, repeatPASS);
   Serial.printf("AP: %s\n", WiFi.softAPIP().toString().c_str());
 
   Serial.printf("Heap before: %d\n", ESP.getFreeHeap());
@@ -292,24 +289,13 @@ result snd() {
   return proceed;
 }
 
-
-
-
-
 result showEvent(eventMask e, navNode& nav, prompt& item) {
 
   return proceed;
 }
 
 
-
-
-
-
 // MENU
-
-
-
 
 MENU(Repeater, "Repeater", showEvent, anyEvent, noStyle
     , SUBMENU(repeatersw) 
@@ -325,14 +311,11 @@ MENU(CaptivePortal, "CaptivePortal", showEvent, anyEvent, noStyle
     , EXIT("<Back")
     );
 
-
-
 MENU(Wifi, "Wifi", showEvent, anyEvent, noStyle                                    
     , SUBMENU(CaptivePortal) 
     , SUBMENU(Repeater) 
     , EXIT("<Back")
      );
-
 
 MENU(Jammer, "Jammer", showEvent, anyEvent, noStyle                                    // Sniffing Sub-Submenu
     , FIELD(frequency, "Freq: ", "Hz", 0, 65535, 1000, 100, rcrcv, enterEvent, wrapStyle)      // Set variables value
@@ -341,12 +324,12 @@ MENU(Jammer, "Jammer", showEvent, anyEvent, noStyle                             
     , EXIT("<Back")
      );
 
-
-
 MENU(BruteForce, "BruteForce-slow", showEvent, anyEvent, noStyle                        // Bruteforce Sub-Submenu 
     , SUBMENU(btfsw)                                                                    // Switch on/off
-    , OP("NICE12Bit", nice, enterEvent)
     , FIELD(value, "Code: ", "", 0, 1000000000, 1000, 10, rcrcv, enterEvent, wrapStyle)   // Set variables value
+    , OP("NICE12Bit", nice, enterEvent)
+    , OP("CAME12Bit", came, enterEvent)
+    , OP("ANMOTORS12Bit", anmotors, enterEvent)
     , FIELD(bitlength, "Bitlength: ", "", 0, 500, 10, 1, rcrcv, enterEvent, wrapStyle)   // Set variables value
     , FIELD(protocol, "Protocol: ", "", 0, 100, 10, 1, rcrcv, enterEvent, wrapStyle)     // Set variables value
     , FIELD(pulselength, "Pulselength: ", "", 0, 3000, 10, 1, rcrcv, enterEvent, wrapStyle)
@@ -456,7 +439,7 @@ NAVROOT(nav, mainMenu, MAX_DEPTH, joystickBtns, out);
 
 result info(menuOut& o, idleEvent e) {
   if (e == idling) {
-    u8g2.setFont(u8g2_font_7x13_mf);
+    u8g2.setFont(LARGE_FONT);
     o.setCursor(0, 0);
     o.print("Version 2.0");
     o.setCursor(0, 1);
@@ -497,16 +480,33 @@ result dtsnf(eventMask e, prompt &item) {
 }
 
 result nice(eventMask e, prompt &item) {
-  protocol = 12;
+  value = 0;
+  protocol = 11;
   bitlength = 12;
   pulselength = 700;
+  return proceed;
+}
+
+result came(eventMask e, prompt &item) {
+  value = 0;
+  protocol = 11;
+  bitlength = 12;
+  pulselength = 320;
+  return proceed;
+}
+
+result anmotors(eventMask e, prompt &item) {
+  value = 0;
+  protocol = 11;
+  bitlength = 12;
+  pulselength = 412;
   return proceed;
 }
 
 
 result datawifi(menuOut& o, idleEvent e) {
   if (e == idling) {
-    u8g2.setFont(u8g2_font_7x13_mf);
+    u8g2.setFont(LARGE_FONT);
     o.setCursor(0, 1);
     o.print(EML);
     o.setCursor(0, 2);
@@ -526,7 +526,10 @@ result dtwifi(eventMask e, prompt &item) {
 
 void setup() {
   Serial.begin(9600);
+  pinMode(rxOn, OUTPUT);
+  digitalWrite(rxOn, HIGH);
   u8g2.clearBuffer();
+  u8g2.clear();
   Wire.begin();
   u8g2.begin();
   u8g2.setBitmapMode(1);
@@ -540,11 +543,11 @@ void setup() {
   jammerSW = 0;
   frequency = 1000;
   
+  u8g2.clearBuffer();
+  u8g2.clear();
   u8g2.setFont(menuFont);
   joystickBtns.begin();
 }
-
-
 
 void loop() {
   if (sniffSW == 1) {
