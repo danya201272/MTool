@@ -21,9 +21,6 @@ https://github.com/geneReeves/ArduinoStreaming
 #include <menu.h>
 #include <menuIO/u8g2Out.h>
 #include <menuIO/keyIn.h>
-#include <menuIO/chainStream.h>
-#include <menuIO/serialOut.h>
-#include <menuIO/serialIn.h>
 
 #define USE_SSD1306
 #define fontX 7
@@ -117,7 +114,7 @@ result sniffOn() {
   value = mySwitch.getReceivedValue();
   bitlength = mySwitch.getReceivedBitlength();
   protocol = mySwitch.getReceivedProtocol();
-  pulselength = mySwitch.getReceivedDelay() ;
+  pulselength = mySwitch.getReceivedDelay();
   return proceed;
 }
 
@@ -429,9 +426,10 @@ keyMap joystickBtn_map[] = {
 keyIn<TOTAL_NAV_BUTTONS> joystickBtns(joystickBtn_map);//the input driver
 #endif
 
+
 MENU_OUTPUTS(out,MAX_DEPTH
   ,U8G2_OUT(u8g2,colors,fontX,fontY,offsetX,offsetY,{0,0,U8_Width/fontX,U8_Height/fontY})
-  ,SERIAL_OUT(Serial)
+  ,NONE
 );
 
 NAVROOT(nav, mainMenu, MAX_DEPTH, joystickBtns, out);
@@ -525,17 +523,15 @@ result dtwifi(eventMask e, prompt &item) {
 }
 
 void setup() {
-  Serial.begin(9600);
   pinMode(rxOn, OUTPUT);
   digitalWrite(rxOn, HIGH);
-  u8g2.clearBuffer();
-  u8g2.clear();
+  Serial.begin(115200);
   Wire.begin();
   u8g2.begin();
-  u8g2.setBitmapMode(1);
   mySwitch.enableReceive(rxPin);
   mySwitch.enableTransmit(txPin);
   WiFi.mode(WIFI_OFF);
+  
 
   btfSW = 0;
   repeat = 2;
@@ -550,6 +546,13 @@ void setup() {
 }
 
 void loop() {
+  nav.doInput();
+
+  if (nav.changed(0)) {//only draw if menu changed for gfx device
+    u8g2.firstPage();
+    do nav.doOutput(); while(u8g2.nextPage());
+  }
+
   if (sniffSW == 1) {
   if (mySwitch.available()) {
     value = mySwitch.getReceivedValue();
@@ -558,13 +561,6 @@ void loop() {
     pulselength = mySwitch.getReceivedDelay();
     mySwitch.resetAvailable();
   }
-  }
-
-  nav.doInput();
-
-  if (nav.changed(0)) {//only draw if menu changed for gfx device
-    u8g2.firstPage();
-    do nav.doOutput(); while(u8g2.nextPage());
   }
   
   if (btfSW == 1) {                    // Bruteforce
