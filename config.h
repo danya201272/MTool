@@ -12,8 +12,8 @@
 #define LARGE_FONT u8g2_font_6x13_mf
 
 #define rxPin D3                         // Приемник Receiver
-#define txPin D8                        // Передатчик Transmitter
-#define rxOn D2                          // Включение приёмника / ON Receiver
+#define txPin D2                        // Передатчик Transmitter
+#define tx2Pin D8                          // Передатчик Transmitter #2
 
 #define repeatSSID "Repeater" // SSID repeater name
 #define repeatPASS "12345678" // Pass sid repeater

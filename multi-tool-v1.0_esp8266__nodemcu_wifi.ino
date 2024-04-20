@@ -53,11 +53,14 @@ const colorDef<uint8_t> colors[6] MEMMODE={
 #include "repeater.h"
 #include <RCSwitch.h>
 RCSwitch mySwitch = RCSwitch();
+RCSwitch mySwitch2 = RCSwitch();
 
 #include <EEPROM.h>
 
 long value;
-long frequency;
+int value2;
+unsigned int frequency;
+unsigned int frequency2;
 int bitlength;
 int protocol; // Variables 
 int pulselength; 
@@ -84,24 +87,25 @@ result datawifi(eventMask e, prompt &item);
 
 result reset(eventMask e) {        // Reset function 
 value = 0;
+value2 = 4096;
 protocol = 0;
 bitlength = 0;
 pulselength = 0;
 repeat = 2;
-frequency = 1000; 
+frequency = 1000;
+frequency2 = 2000;
 return proceed;
 }
 
 result jammerswOn() {
-  jammerSW = 1 ;
+  jammerSW = 1;
   return proceed;
 }
 
 result jammerswOff() {
   jammerSW = 0 ;
-  //noTone(15); 
-  analogWriteFreq(0);
-  analogWrite(15,0);
+  noTone(txPin);
+  noTone(tx2Pin);
   return proceed;
 }
 
@@ -109,7 +113,6 @@ result jammerswOff() {
 // Sniff on/off
 
 result sniffOn() {
-  digitalWrite(rxOn, HIGH);
   sniffSW = 1;
   value = mySwitch.getReceivedValue();
   bitlength = mySwitch.getReceivedBitlength();
@@ -120,7 +123,6 @@ result sniffOn() {
 
 result sniffOff() {
   sniffSW = 0;
-  digitalWrite(rxOn, LOW);
   return proceed;
 }
 
@@ -131,6 +133,8 @@ result btfswOn() {
   btfSW = 1;
   mySwitch.setProtocol(protocol);
   mySwitch.setPulseLength(pulselength);
+  mySwitch2.setProtocol(protocol);
+  mySwitch2.setPulseLength(pulselength);
   return proceed;
 }
 
@@ -277,6 +281,9 @@ result snd() {
   mySwitch.setProtocol(protocol);
   mySwitch.setPulseLength(pulselength);
   mySwitch.send(value, bitlength);            // Send function
+  mySwitch2.setProtocol(protocol);
+  mySwitch2.setPulseLength(pulselength);
+  mySwitch2.send(value, bitlength); 
   swcounter++ ;
   delay(1);  // necessary!! without delay after 10 repeat's gives restart 
     
@@ -316,6 +323,7 @@ MENU(Wifi, "Wifi", showEvent, anyEvent, noStyle
 
 MENU(Jammer, "Jammer", showEvent, anyEvent, noStyle                                    // Sniffing Sub-Submenu
     , FIELD(frequency, "Freq: ", "Hz", 0, 65535, 1000, 100, rcrcv, enterEvent, wrapStyle)      // Set variables value
+    , FIELD(frequency2, "Freq2: ", "Hz", 0, 65535, 1000, 100, rcrcv, enterEvent, wrapStyle)      // Set variables value
     , SUBMENU(jammersw)                                                                 // Submenu Sniffer
     , OP("Reset", reset, enterEvent)                                                    // Reset
     , EXIT("<Back")
@@ -324,6 +332,7 @@ MENU(Jammer, "Jammer", showEvent, anyEvent, noStyle                             
 MENU(BruteForce, "BruteForce-slow", showEvent, anyEvent, noStyle                        // Bruteforce Sub-Submenu 
     , SUBMENU(btfsw)                                                                    // Switch on/off
     , FIELD(value, "Code: ", "", 0, 1000000000, 1000, 10, rcrcv, enterEvent, wrapStyle)   // Set variables value
+    , FIELD(value2, "Code2TXDOWN: ", "", 0, 4096, 100, 10, rcrcv, enterEvent, wrapStyle)   // Set variables value2
     , OP("NICE12Bit", nice, enterEvent)
     , OP("CAME12Bit", came, enterEvent)
     , OP("ANMOTORS12Bit", anmotors, enterEvent)
@@ -479,6 +488,7 @@ result dtsnf(eventMask e, prompt &item) {
 
 result nice(eventMask e, prompt &item) {
   value = 0;
+  value2 = 4096;
   protocol = 11;
   bitlength = 12;
   pulselength = 700;
@@ -487,6 +497,7 @@ result nice(eventMask e, prompt &item) {
 
 result came(eventMask e, prompt &item) {
   value = 0;
+  value2 = 4096;
   protocol = 11;
   bitlength = 12;
   pulselength = 320;
@@ -495,6 +506,7 @@ result came(eventMask e, prompt &item) {
 
 result anmotors(eventMask e, prompt &item) {
   value = 0;
+  value2 = 4096;
   protocol = 11;
   bitlength = 12;
   pulselength = 412;
@@ -523,13 +535,11 @@ result dtwifi(eventMask e, prompt &item) {
 }
 
 void setup() {
-  pinMode(rxOn, OUTPUT);
-  digitalWrite(rxOn, HIGH);
-  Serial.begin(115200);
   Wire.begin();
   u8g2.begin();
   mySwitch.enableReceive(rxPin);
   mySwitch.enableTransmit(txPin);
+  mySwitch2.enableTransmit(tx2Pin);
   WiFi.mode(WIFI_OFF);
   
 
@@ -537,7 +547,9 @@ void setup() {
   repeat = 2;
   swcounter = 1;
   jammerSW = 0;
+  value2 = 4096;
   frequency = 1000;
+  frequency2 = 2000;
   
   u8g2.clearBuffer();
   u8g2.clear();
@@ -547,7 +559,6 @@ void setup() {
 
 void loop() {
   nav.doInput();
-
   if (nav.changed(0)) {//only draw if menu changed for gfx device
     u8g2.firstPage();
     do nav.doOutput(); while(u8g2.nextPage());
@@ -565,13 +576,14 @@ void loop() {
   
   if (btfSW == 1) {                    // Bruteforce
     mySwitch.send(value, bitlength);
-    mySwitch.send(value, bitlength);
     value++;
+    mySwitch2.send(value2, bitlength);
+    value2--;
   }
 
   if (jammerSW == 1) {
-    analogWriteFreq(frequency);
-    analogWrite(txPin,512); // only for esp8266.If you using arduino, use tone(pin,freuency); in void loop, and comment this whole void tones.
+    tone(txPin,frequency);
+    tone(tx2Pin,frequency2);
   }
  
   if (wificapSW == 1) {
